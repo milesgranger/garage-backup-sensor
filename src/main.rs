@@ -2,7 +2,9 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
+#[allow(unused_imports)]
 use defmt::*;
+
 use embassy_executor::Spawner;
 use embassy_stm32::gpio::{Flex, Level, Output, Pull, Speed};
 use embassy_time::{block_for, Duration, Instant, Timer};
@@ -27,9 +29,9 @@ async fn main(_spawner: Spawner) {
     led_yellow.set_low();
     led_red.set_low();
 
-    let loop_duration_millis = 100;
-    let mut distance = 0_f32;
-    let mut last_change_millis = 0;
+    let interval = Duration::from_millis(100);
+    let mut distance_prev = 0_f32;
+    let mut last_significant_change = Instant::now();
 
     loop {
         // Query laser for measurement, ref pg 3 of datasheet.
@@ -44,45 +46,38 @@ async fn main(_spawner: Spawner) {
         laser.set_low();
 
         laser.set_as_input(Pull::None);
-
         while laser.is_low() {}
 
         let inst = Instant::now();
         while laser.is_high() {}
         let duration = inst.elapsed();
 
-        let dist = ((duration.as_micros() as f32 * 171.5) / 10_f32 / 100_f32 / 10_f32) as f32; // Ref Ping Laser datasheet pg. 4
-        info!("Value: {}", dist);
+        let distance_curr =
+            ((duration.as_micros() as f32 * 171.5) / 10_f32 / 100_f32 / 10_f32) as f32; // Ref Ping Laser datasheet pg. 4
 
         // Determine if distance is actively changing since last, more than 15cm
-        let active = if num::abs(dist - distance) < 15_f32 {
-            // Last change over 30seconds ago, turn off all lights.
-            if last_change_millis > 30_000 {
-                led_green.set_low();
-                led_yellow.set_low();
-                led_red.set_low();
-                distance = dist;
-                // Extra sleep until next check since nothing is happening.
-                Timer::after(Duration::from_secs(5)).await;
-                false
-
-            // Last change less than 10s ago, increment no change counter
-            } else {
-                last_change_millis += loop_duration_millis;
-                true
+        let mut active = true;
+        match num::abs(distance_prev - distance_curr) as u8 {
+            0..=14 => {
+                // Last change over 30s ago, turn off all lights.
+                if last_significant_change.elapsed().as_secs() > 30 {
+                    led_green.set_low();
+                    led_yellow.set_low();
+                    led_red.set_low();
+                    // Extra sleep until next check since nothing is happening.
+                    Timer::after(Duration::from_secs(5)).await;
+                    active = false;
+                }
             }
-        } else {
-            last_change_millis = 0;
-            distance = dist;
-            true
+            15.. => last_significant_change = Instant::now(),
         };
 
         if active {
-            if distance <= STOP_CM as _ {
+            if distance_curr <= STOP_CM as _ {
                 led_green.set_low();
                 led_yellow.set_low();
                 led_red.set_high();
-            } else if distance <= WARN_CM as _ {
+            } else if distance_curr <= WARN_CM as _ {
                 led_green.set_low();
                 led_yellow.set_high();
                 led_red.set_low();
@@ -91,8 +86,9 @@ async fn main(_spawner: Spawner) {
                 led_yellow.set_low();
                 led_red.set_low();
             }
+            distance_prev = distance_curr;
         }
 
-        Timer::after(Duration::from_millis(loop_duration_millis)).await;
+        Timer::after(interval).await;
     }
 }
