@@ -56,8 +56,19 @@ async fn main(_spawner: Spawner) {
         while laser.is_high() {}
         let duration = inst.elapsed();
 
+        // Invalid/Inacurate measurements: Ref pg 3 of datasheet.
+        // We need an accurate measurement.
+        if !(290..=12_000).contains(&duration.as_micros()) {
+            led_green.set_low();
+            led_yellow.set_low();
+            led_red.set_low();
+            Timer::after(Duration::from_secs(1)).await;
+            continue;
+        }
+
+        // Ref Ping Laser datasheet pg. 4
         let distance_curr =
-            ((duration.as_micros() as f32 * 171.5) / 10_f32 / 100_f32 / 10_f32) as u8; // Ref Ping Laser datasheet pg. 4
+            ((duration.as_micros() as f32 * 171.5) / 10_f32 / 100_f32 / 10_f32) as u8;
 
         // Check if we're setting the distance
         let button_pressed_start = Instant::now();
@@ -84,7 +95,7 @@ async fn main(_spawner: Spawner) {
         match num::abs(distance_prev as i32 - distance_curr as i32) as u8 {
             0..=14 => {
                 // Last change over 30s ago, turn off all lights.
-                if last_significant_change.elapsed().as_secs() > 30 {
+                if last_significant_change.elapsed().as_secs() > 20 {
                     led_green.set_low();
                     led_yellow.set_low();
                     led_red.set_low();
