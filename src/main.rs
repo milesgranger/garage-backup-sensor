@@ -10,9 +10,8 @@ use embassy_stm32::gpio::{Flex, Input, Level, Output, Pull, Speed};
 use embassy_time::{block_for, Duration, Instant, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-static RANGE_CM: u8 = 200;
-static STOP_CM: u8 = 40; // When red light turns on
-static WARN_CM: u8 = 90; // When yellow light turns on, green if greater
+static STOP_CM: f32 = 40.; // When red light turns on
+static WARN_CM: f32 = 90.; // When yellow light turns on, green if greater
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -31,8 +30,8 @@ async fn main(_spawner: Spawner) {
     led_yellow.set_low();
     led_red.set_low();
 
-    let interval = Duration::from_millis(100);
-    let mut distance_prev = 0u8;
+    let interval = Duration::from_millis(250);
+    let mut distance_prev = 0f32;
     let mut last_significant_change = Instant::now();
     let mut stop_cm = STOP_CM;
     let mut warn_cm = WARN_CM;
@@ -57,8 +56,8 @@ async fn main(_spawner: Spawner) {
         let duration = inst.elapsed();
 
         // Invalid/Inacurate measurements: Ref pg 3 of datasheet.
-        // We need an accurate measurement.
-        if !(290..=12_000).contains(&duration.as_micros()) {
+        // We need an valid measurement.
+        if duration.as_millis() > 12 {
             led_green.set_low();
             led_yellow.set_low();
             led_red.set_low();
@@ -67,15 +66,14 @@ async fn main(_spawner: Spawner) {
         }
 
         // Ref Ping Laser datasheet pg. 4
-        let distance_curr =
-            ((duration.as_micros() as f32 * 171.5) / 10_f32 / 100_f32 / 10_f32) as u8;
+        let distance_curr = (duration.as_micros() as f32 * 171.5) / 10000.;
 
         // Check if we're setting the distance
         let button_pressed_start = Instant::now();
         while button.is_high() {
             if button_pressed_start.elapsed() >= Duration::from_secs(5) {
                 stop_cm = distance_curr;
-                warn_cm = stop_cm + 50;
+                warn_cm = stop_cm + 50.;
                 for _ in 0..3 {
                     led_green.set_high();
                     led_yellow.set_high();
@@ -88,31 +86,31 @@ async fn main(_spawner: Spawner) {
                 }
                 break;
             }
+            Timer::after(Duration::from_millis(250)).await;
         }
 
-        // Determine if distance is actively changing since last, more than 15cm
+        // Determine if distance is actively changing since last, more than 20cm
         let mut active = true;
-        match num::abs(distance_prev as i32 - distance_curr as i32) as u8 {
-            0..=14 => {
-                // Last change over 30s ago, turn off all lights.
-                if last_significant_change.elapsed().as_secs() > 20 {
-                    led_green.set_low();
-                    led_yellow.set_low();
-                    led_red.set_low();
-                    // Extra sleep until next check since nothing is happening.
-                    Timer::after(Duration::from_secs(5)).await;
-                    active = false;
-                }
+        if num::abs(distance_prev - distance_curr) < 20. {
+            // Last change over 30s ago, turn off all lights.
+            if last_significant_change.elapsed().as_secs() > 30 {
+                led_green.set_low();
+                led_yellow.set_low();
+                led_red.set_low();
+                // Extra sleep until next check since nothing is happening.
+                Timer::after(interval).await;
+                active = false;
             }
-            15.. => last_significant_change = Instant::now(),
+        } else {
+            last_significant_change = Instant::now();
         };
 
         if active {
-            if distance_curr as u8 <= stop_cm {
+            if distance_curr <= stop_cm {
                 led_green.set_low();
                 led_yellow.set_low();
                 led_red.set_high();
-            } else if distance_curr as u8 <= warn_cm {
+            } else if distance_curr <= warn_cm {
                 led_green.set_low();
                 led_yellow.set_high();
                 led_red.set_low();
@@ -123,7 +121,6 @@ async fn main(_spawner: Spawner) {
             }
             distance_prev = distance_curr;
         }
-
         Timer::after(interval).await;
     }
 }
