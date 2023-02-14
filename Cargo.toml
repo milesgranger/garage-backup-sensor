@@ -9,7 +9,7 @@ embassy-sync = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy
 embassy-executor = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "integrated-timers"] }
 embassy-time = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt", "defmt-timestamp-uptime", "tick-hz-32_768"] }
 embassy-embedded-hal = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git" }
-embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "defmt", "unstable-pac", "stm32u575zi", "time-driver-any", "exti", "unstable-traits"]  }
+embassy-stm32 = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["nightly", "defmt", "unstable-pac", "stm32l475vg", "time-driver-any", "exti", "unstable-traits"]  }
 embassy-usb = { version = "0.1.0", git = "https://github.com/embassy-rs/embassy.git", features = ["defmt"] }
 
 defmt = "0.3"
@@ -26,6 +26,7 @@ futures = { version = "0.3.17", default-features = false, features = ["async-awa
 heapless = { version = "0.7.5", default-features = false }
 
 micromath = "2.0.0"
+STM-ToF-rs = { path = "../STM-ToF-rs" }
 
 [profile.release]
 lto = true
