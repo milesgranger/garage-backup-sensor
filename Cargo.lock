@@ -785,6 +785,7 @@ dependencies = [
  "micromath",
  "num",
  "panic-probe",
+ "spin",
 ]
 
 [[package]]
