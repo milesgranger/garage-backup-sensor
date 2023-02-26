@@ -4,7 +4,8 @@
 runner = "probe-run --chip STM32L475VGTx"
 
 [build]
-target = "thumbv8m.main-none-eabihf"
+# target = "thumbv8m.main-none-eabihf"
+target = "thumbv7em-none-eabi"
 
 [env]
 DEFMT_LOG = "trace"
