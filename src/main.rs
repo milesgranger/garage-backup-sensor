@@ -22,7 +22,7 @@ use {defmt_rtt as _, panic_probe as _};
 
 static STOP_CM: f32 = 40.; // When red light turns  on
 static WARN_CM: f32 = 90.; // When yellow light turns on, green if greater
-static ADDRESS: u8 = 0x52;
+static ADDRESS: u8 = 0x29;
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
@@ -42,10 +42,6 @@ async fn main(_spawner: Spawner) {
     );
 
     let mut distance_sensor_xshut = Output::new(peripherals.PA4, Level::Low, Speed::Low);
-    distance_sensor_xshut.set_high();
-    Timer::after(Duration::from_millis(500)).await;
-    distance_sensor_xshut.set_low();
-    Timer::after(Duration::from_millis(500)).await;
     distance_sensor_xshut.set_high();
     Timer::after(Duration::from_millis(500)).await;
 
@@ -81,7 +77,10 @@ async fn main(_spawner: Spawner) {
         loop {
             match i2c.blocking_read(ADDRESS, &mut buf) {
                 Ok(_) => {
-                    info!("Read value okay!");
+                    info!(
+                        "waiting for value: {}, mask: {}, recv: {}",
+                        value, mask, buf[0]
+                    );
                     buf[0] &= mask;
                     if buf[0] == value {
                         return Ok(());
@@ -89,10 +88,6 @@ async fn main(_spawner: Spawner) {
                 }
                 Err(err) => info!("Failed to read: {:?}", err),
             };
-            info!(
-                "waiting for value: {}, mask: {}, recv: {}",
-                value, mask, buf[0]
-            );
             block_for(Duration::from_millis(poll_delay_ms as _));
         }
     });
