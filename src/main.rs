@@ -7,7 +7,7 @@ use core::ffi::c_void;
 #[allow(unused_imports)]
 use defmt::*;
 use embassy_executor::Spawner;
-use embassy_stm32::{dma::NoDma, peripherals::I2C3, time::Hertz};
+use embassy_stm32::{dma::NoDma, peripherals::I2C1, time::Hertz};
 #[allow(unused_imports)]
 use embassy_stm32::{
     gpio::{Flex, Input, Level, Output, Pin, Pull, Speed},
@@ -24,32 +24,31 @@ static STOP_CM: f32 = 40.; // When red light turns  on
 static WARN_CM: f32 = 90.; // When yellow light turns on, green if greater
 static ADDRESS: u8 = 0x52;
 
-struct Context<'a> {
-    led_green: Output<'a, PB14>,
-}
-
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let peripherals = embassy_stm32::init(Default::default());
+    Timer::after(Duration::from_millis(500)).await;
 
-    let irq = interrupt::take!(I2C3_EV);
-
+    let irq = interrupt::take!(I2C1_EV);
     let mut i2c = I2c::new(
-        peripherals.I2C3,
-        peripherals.PC0,
-        peripherals.PC1,
+        peripherals.I2C1,
+        peripherals.PB8,
+        peripherals.PB9,
         irq,
         NoDma,
         NoDma,
         Hertz(100_000),
         Default::default(),
     );
-    Timer::after(Duration::from_millis(500)).await;
 
     let mut distance_sensor_xshut = Output::new(peripherals.PA4, Level::Low, Speed::Low);
     distance_sensor_xshut.set_high();
-
     Timer::after(Duration::from_millis(500)).await;
+    distance_sensor_xshut.set_low();
+    Timer::after(Duration::from_millis(500)).await;
+    distance_sensor_xshut.set_high();
+    Timer::after(Duration::from_millis(500)).await;
+
     let mut data = [0u8; 1];
     unwrap!(i2c.blocking_write_read(ADDRESS, &[0x0F], &mut data));
     info!("Whoami: {}", data[0]);
@@ -60,13 +59,13 @@ async fn main(_spawner: Spawner) {
 
     let mut platform = Platform::new(ctx);
     platform.set_read_byte(|ctx| {
-        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C3>) };
+        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
         let mut data = [0u8; 1];
         unwrap!(i2c.blocking_read(ADDRESS, &mut data));
         Ok(data[0])
     });
     platform.set_write_byte(|ctx, byte| {
-        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C3>) };
+        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
         let data = [byte];
         unwrap!(i2c.blocking_write(ADDRESS, &data));
         Ok(())
@@ -76,7 +75,7 @@ async fn main(_spawner: Spawner) {
         Ok(())
     });
     platform.set_wait_value_mask_ex(|ctx, timeout_ms, value, mask, poll_delay_ms| {
-        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C3>) };
+        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
 
         let mut buf = [0u8; 1];
         loop {
