@@ -60,9 +60,21 @@ async fn main(_spawner: Spawner) {
         unwrap!(i2c.blocking_read(ADDRESS, &mut data));
         Ok(data[0])
     });
+    platform.set_read_word(|ctx| {
+        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
+        let mut data = [0u8; 2];
+        unwrap!(i2c.blocking_read(ADDRESS, &mut data));
+        Ok(u16::from_le_bytes(data))
+    });
     platform.set_write_byte(|ctx, byte| {
         let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
         let data = [byte];
+        unwrap!(i2c.blocking_write(ADDRESS, &data));
+        Ok(())
+    });
+    platform.set_write_word(|ctx, word| {
+        let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
+        let data = word.to_le_bytes();
         unwrap!(i2c.blocking_write(ADDRESS, &data));
         Ok(())
     });
