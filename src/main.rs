@@ -17,7 +17,7 @@ use embassy_stm32::{
 };
 use embassy_time::{block_for, Duration, Instant, Timer};
 use spin::Mutex;
-use stm_tof::{ffi::VL53LX_DEV, platform::Platform, Result, VL53L4CX_Device};
+use stm_tof::{ffi::VL53LX_DEV, platform::Platform, DistanceMode, Result, VL53L4CX_Device};
 use {defmt_rtt as _, panic_probe as _};
 
 static STOP_CM: f32 = 40.; // When red light turns  on
@@ -86,13 +86,10 @@ async fn main(_spawner: Spawner) {
         let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
 
         let mut buf = [0u8; 1];
+        // TODO: consider the timeout limit
         loop {
             match i2c.blocking_read(ADDRESS, &mut buf) {
                 Ok(_) => {
-                    info!(
-                        "waiting for value: {}, mask: {}, recv: {}",
-                        value, mask, buf[0]
-                    );
                     buf[0] &= mask;
                     if buf[0] == value {
                         return Ok(());
@@ -107,10 +104,26 @@ async fn main(_spawner: Spawner) {
     let mut distance_sensor = VL53L4CX_Device::new(ADDRESS as _, platform);
 
     distance_sensor.init().unwrap();
+    distance_sensor
+        .set_distance_mode(DistanceMode::Short)
+        .unwrap();
+    info!(
+        "Distance mode: {}",
+        distance_sensor.get_distance_mode().unwrap() as u8,
+    );
+
+    distance_sensor.start_measurement().unwrap();
     loop {
         led_green.set_high();
         Timer::after(Duration::from_millis(250)).await;
         led_green.set_low();
         Timer::after(Duration::from_millis(250)).await;
+
+        distance_sensor.wait_measurement_data_ready().unwrap();
+        let n = distance_sensor.get_multi_ranging_data().unwrap();
+        info!("Found {} objects!", n);
+        distance_sensor
+            .clear_interrupt_and_start_measurement()
+            .unwrap();
     }
 }
