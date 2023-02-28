@@ -63,7 +63,7 @@ async fn main(_spawner: Spawner) {
         let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
         let mut data = [0u8; 2];
         unwrap!(i2c.blocking_write_read(ADDRESS, &index.to_be_bytes(), &mut data));
-        let word = u16::from_be_bytes(data);
+        let word = u16::from_le_bytes(data);
         Ok(word)
     });
     platform.set_write_byte(|ctx, index, byte| {
@@ -71,14 +71,8 @@ async fn main(_spawner: Spawner) {
         let mut data = [0u8; 3];
         data[0..2].copy_from_slice(&index.to_be_bytes());
         data[2] = byte;
-        for _ in 0..4 {
-            if let Ok(_) = i2c.blocking_write(ADDRESS, &data) {
-                return Ok(());
-            } else {
-                block_for(Duration::from_millis(50));
-            }
-        }
-        crate::panic!("Failed to write {:?} to device", &data);
+        unwrap!(i2c.blocking_write(ADDRESS, &data));
+        Ok(())
     });
     platform.set_write_word(|ctx, index, word| {
         let i2c = unsafe { &mut *(ctx.0 as *mut I2c<I2C1>) };
