@@ -12,15 +12,14 @@ use {defmt_rtt as _, panic_probe as _};
 
 extern "C" {
     // fn acc_hal_rss_integration_get_implementation();
-    fn acconeer_main(argc: i32, argv: *mut c_char) -> i32;
+    fn acc_version_get() -> *const c_char;
 }
 
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_stm32::init(Default::default());
     info!("Hello World, calling sensor count!");
-    let count = unsafe { acconeer_main(0, core::ptr::null_mut() as _) };
-    info!("Sensor count: {}", count);
+    let version_ptr = unsafe { acc_version_get() };
 
     let mut led = Output::new(p.PB14, Level::High, Speed::Low);
 
