@@ -1,0 +1,14 @@
+#![allow(dead_code, non_camel_case_types, non_upper_case_globals)]
+pub mod acc_alg_basic_utils;
+pub mod acc_config;
+pub mod acc_config_subsweep;
+pub mod acc_definitions_a121;
+pub mod acc_definitions_common;
+pub mod acc_detector_distance;
+pub mod acc_detector_distance_definitions;
+pub mod acc_detector_presence;
+pub mod acc_hal_definitions_a121;
+pub mod acc_processing;
+pub mod acc_rss_a121;
+pub mod acc_sensor;
+pub mod acc_version;

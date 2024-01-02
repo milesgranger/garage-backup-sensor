@@ -6,6 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Change stm32l4s5vi to your chip name, if necessary.
+cty = "*"
 embassy-stm32 = { version = "0.1.0", path = "./../embassy/embassy-stm32", features = [ "defmt", "unstable-pac", "stm32l431cb", "memory-x", "time-driver-any", "exti", "chrono"]  }
 embassy-sync = { version = "0.5.0", path = "./../embassy/embassy-sync", features = ["defmt"] }
 embassy-executor = { version = "0.4.0", path = "./../embassy/embassy-executor", features = ["arch-cortex-m", "executor-thread", "defmt", "integrated-timers"] }
@@ -44,4 +45,4 @@ opt = "z"
 codegen-units = 1
 
 [build-dependencies]
-cc = "^1"
+bindgen = "^0.69"
