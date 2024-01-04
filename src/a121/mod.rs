@@ -150,12 +150,53 @@ pub mod detector_distance {
 pub mod rss {
     use super::*;
 
+    use acc_rss_a121::*;
+    use core::ffi::c_void;
+
+    pub fn hal_register(hal: &AccHAL) {
+        if !unsafe { acc_rss_hal_register(&hal.0 as *const _) } {
+            unimplemented!("Failed to register HAL");
+        }
+    }
+
+    unsafe extern "C" fn malloc_(size: usize) -> *mut c_void {
+        malloc(size as u32)
+    }
+
+    pub type TransferFn = acc_hal_sensor_transfer8_function_t;
+    pub type Transfer16Fn = acc_hal_sensor_transfer16_function_t;
+    pub type LogFn = acc_hal_log_function_t;
+
+    pub struct AccHAL(pub(crate) acc_hal_a121_t);
+
+    impl AccHAL {
+        pub fn new<F1, F2>(transfer: TransferFn, transfer16: Transfer16Fn, log: LogFn) -> Self {
+            if transfer.is_none() {
+                unimplemented!("Must define a transfer function");
+            }
+            let inner = acc_hal_a121_t {
+                max_spi_transfer_size: 65535,
+                mem_alloc: Some(malloc_),
+                mem_free: Some(free),
+                transfer,
+                log,
+                optimization: acc_hal_optimization_t { transfer16 },
+            };
+            let slf = Self(inner);
+            slf.register();
+            slf
+        }
+        fn register(&self) {
+            hal_register(self)
+        }
+    }
+
     /// RSS Sensor config
-    pub struct Config(*mut acc_rss_a121::acc_config_t);
+    pub struct Config(*mut acc_config_t);
 
     impl Default for Config {
         fn default() -> Self {
-            let conf = unsafe { acc_rss_a121::acc_config_create() };
+            let conf = unsafe { acc_config_create() };
             Self(conf)
         }
     }
@@ -163,7 +204,7 @@ pub mod rss {
     impl Drop for Config {
         fn drop(&mut self) {
             if !self.0.is_null() {
-                unsafe { acc_rss_a121::acc_config_destroy(self.0) };
+                unsafe { acc_config_destroy(self.0) };
             }
         }
     }

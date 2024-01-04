@@ -35,7 +35,12 @@ async fn main(_spawner: Spawner) {
         unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
     }
 
+    // version
     a121::version::version_get(|v| info!("Version: {}", v.to_str().unwrap()));
+
+    // HAL for radar
+    // let hal = a121::rss::AccHAL::new();
+
     let config = a121::detector_distance::Config::new(
         a121::detector_distance::DistancePresetConfig::Balanced,
     );
