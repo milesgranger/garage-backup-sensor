@@ -24,7 +24,7 @@ use garage_backup_sensor::a121;
 static HEAP: Heap = Heap::empty();
 
 type LayoutStorageSize = u16;
-const STORAGE_SIZE_BYTES: usize = 2;
+const STORAGE_SIZE_BYTES: usize = (LayoutStorageSize::BITS / 8) as usize;
 
 // struct DistanceDetectorResources {
 //     sensor: Sensor,
