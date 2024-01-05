@@ -159,10 +159,8 @@ pub mod rss {
         }
     }
 
-    unsafe extern "C" fn malloc_(size: usize) -> *mut c_void {
-        malloc(size as u32)
-    }
-
+    pub type MemAllocFn = unsafe extern "C" fn(usize) -> *mut c_void;
+    pub type MemFreeFn = unsafe extern "C" fn(*mut c_void);
     pub type TransferFn = acc_hal_sensor_transfer8_function_t;
     pub type Transfer16Fn = acc_hal_sensor_transfer16_function_t;
     pub type LogFn = acc_hal_log_function_t;
@@ -170,14 +168,20 @@ pub mod rss {
     pub struct AccHAL(pub(crate) acc_hal_a121_t);
 
     impl AccHAL {
-        pub fn new<F1, F2>(transfer: TransferFn, transfer16: Transfer16Fn, log: LogFn) -> Self {
+        pub fn new(
+            transfer: TransferFn,
+            transfer16: Transfer16Fn,
+            log: LogFn,
+            mem_alloc: MemAllocFn,
+            mem_free: MemFreeFn,
+        ) -> Self {
             if transfer.is_none() {
                 unimplemented!("Must define a transfer function");
             }
             let inner = acc_hal_a121_t {
                 max_spi_transfer_size: 65535,
-                mem_alloc: Some(malloc_),
-                mem_free: Some(free),
+                mem_alloc: Some(mem_alloc),
+                mem_free: Some(mem_free),
                 transfer,
                 log,
                 optimization: acc_hal_optimization_t { transfer16 },

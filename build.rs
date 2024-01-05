@@ -2,16 +2,16 @@ use bindgen::builder;
 use std::{fs, path::PathBuf};
 
 fn main() {
+    // math and c libs, TODO: better link search path finding, besides hardcoded?
+    println!("cargo:rustc-link-lib=c");
+    println!("cargo:rustc-link-lib=m");
+    println!("cargo:rustc-link-search=/usr/arm-none-eabi/lib");
+
     // a121 libs
     println!("cargo:rustc-link-lib=static=acconeer_a121");
     println!("cargo:rustc-link-lib=static=acc_detector_distance_a121");
     println!("cargo:rustc-link-lib=static=acc_detector_presence_a121");
     println!("cargo:rustc-link-search=vendored/cortex_m4_gcc/rss/lib");
-
-    // math and c libs, TODO: better link search path finding, besides hardcoded?
-    println!("cargo:rustc-link-lib=c");
-    println!("cargo:rustc-link-lib=m");
-    println!("cargo:rustc-link-search=/usr/arm-none-eabi/lib");
 
     // embedded stuffy stuff
     println!("cargo:rustc-link-arg-bins=--nmagic");
